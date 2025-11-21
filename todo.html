@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do List - StudyFocus</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="floating-navbar">
+        <div class="floating-nav-container">
+            <div class="floating-nav-logo">
+                <a href="index.html" class="logo">
+                    <i class="fas fa-brain"></i>
+                    <span>StudyFocus</span>
+                </a>
+            </div>
+            <div class="floating-nav-menu" id="floatingNavMenu">
+                <a href="index.html" class="floating-nav-link">
+                    <i class="fas fa-home"></i>
+                    <span>Beranda</span>
+                </a>
+                <a href="dashboard.html" class="floating-nav-link">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="pomodoro.html" class="floating-nav-link">
+                    <i class="fas fa-clock"></i>
+                    <span>Pomodoro</span>
+                </a>
+                <a href="todo.html" class="floating-nav-link">
+                    <i class="fas fa-tasks"></i>
+                    <span>To-Do</span>
+                </a>
+                <a href="stats.html" class="floating-nav-link active">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Statistik</span>
+                </a>
+            </div>
+            <div class="floating-nav-actions">
+                <button id="floatingThemeToggle" class="floating-theme-btn" title="Ubah Tema">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="floating-nav-toggle" id="floatingNavToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="todo-page">
+        <!-- Background Gradient Circles -->
+        <div class="todo-background">
+            <div class="gradient-circle circle-1"></div>
+            <div class="gradient-circle circle-2"></div>
+            <div class="gradient-circle circle-3"></div>
+        </div>
+
+        <div class="container">
+            <!-- Header dengan gaya hero section -->
+            <div class="todo-header">
+                <div class="badge">
+                    <span>📝 Manajemen Tugas</span>
+                </div>
+                <h1 class="todo-title">
+                    To-Do List <span class="gradient-text">Belajar</span>
+                </h1>
+                <p class="todo-description">
+                    Kelola semua tugas dan aktivitas belajar Anda di satu tempat yang terorganisir.
+                </p>
+            </div>
+
+            <div class="todo-full-revamped">
+                <!-- Input Section -->
+                <div class="feature-card todo-input-card">
+                    <div class="todo-input-revamped">
+                        <input type="text" id="todoInput" placeholder="Apa yang ingin Anda pelajari hari ini?">
+                        <button id="addTodo" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Tambah Tugas
+                        </button>
+                    </div>
+                    <div class="todo-filters-revamped">
+                        <button class="filter-btn active" data-filter="all">
+                            <i class="fas fa-list"></i> Semua
+                        </button>
+                        <button class="filter-btn" data-filter="active">
+                            <i class="fas fa-clock"></i> Aktif
+                        </button>
+                        <button class="filter-btn" data-filter="completed">
+                            <i class="fas fa-check-circle"></i> Selesai
+                        </button>
+                        <button class="filter-btn" data-filter="priority">
+                            <i class="fas fa-star"></i> Prioritas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Todo List -->
+                <div class="feature-card todo-list-card">
+                    <div class="todo-list-header">
+                        <h3><i class="fas fa-tasks"></i> Daftar Tugas</h3>
+                        <div class="todo-actions">
+                            <button id="clearCompleted" class="btn btn-outline btn-small">
+                                <i class="fas fa-trash"></i> Hapus Selesai
+                            </button>
+                        </div>
+                    </div>
+                    <ul class="todo-list-revamped" id="todoList">
+                        <!-- To-do items akan ditambahkan di sini -->
+                        <li class="empty-message">
+                            <i class="fas fa-clipboard-list"></i>
+                            <p>Belum ada tugas. Tambahkan tugas pertama Anda!</p>
+                        </li>
+                    </ul>
+                    <div class="todo-stats-revamped">
+                        <div class="todo-stat">
+                            <span class="stat-label">Total Tugas</span>
+                            <span class="stat-value" id="totalTasks">0</span>
+                        </div>
+                        <div class="todo-stat">
+                            <span class="stat-label">Terselesaikan</span>
+                            <span class="stat-value" id="completedTasks">0</span>
+                        </div>
+                        <div class="todo-stat">
+                            <span class="stat-label">Progress</span>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="todoProgressFill"></div>
+                                </div>
+                                <span class="progress-text" id="todoProgressText">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tips Section -->
+                <div class="feature-card todo-tips-card">
+                    <h3><i class="fas fa-lightbulb"></i> Tips Produktivitas</h3>
+                    <div class="todo-tips-list">
+                        <div class="todo-tip">
+                            <div class="tip-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="tip-content">
+                                <h4>Break Down Tugas Besar</h4>
+                                <p>Pecah tugas besar menjadi langkah-langkah kecil yang lebih mudah dikelola.</p>
+                            </div>
+                        </div>
+                        <div class="todo-tip">
+                            <div class="tip-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="tip-content">
+                                <h4>Prioritaskan dengan Matriks Eisenhower</h4>
+                                <p>Kategorikan tugas berdasarkan urgensi dan pentingnya.</p>
+                            </div>
+                        </div>
+                        <div class="todo-tip">
+                            <div class="tip-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="tip-content">
+                                <h4>Gunakan Teknik Pomodoro</h4>
+                                <p>Kerjakan tugas dalam blok waktu 25 menit dengan istirahat singkat.</p>
+                            </div>
+                        </div>
+                        <div class="todo-tip">
+                            <div class="tip-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="tip-content">
+                                <h4>Review Harian</h4>
+                                <p>Setiap hari, review progress dan sesuaikan rencana jika diperlukan.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Edit Todo -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Tugas</h3>
+            <input type="text" id="editTodoInput">
+            <div class="modal-actions">
+                <button id="saveEdit" class="btn btn-primary">Simpan</button>
+                <button id="cancelEdit" class="btn btn-secondary">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Install Prompt -->
+    <div id="installPrompt" class="install-prompt">
+        <div class="install-content">
+            <div class="install-icon">
+                <i class="fas fa-brain"></i>
+            </div>
+            <div class="install-text">
+                <h4>Install StudyFocus</h4>
+                <p>Dapatkan pengalaman seperti aplikasi native</p>
+            </div>
+            <div class="install-actions">
+                <button id="installCancel" class="btn btn-outline">Nanti</button>
+                <button id="installConfirm" class="btn btn-primary">Install</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
