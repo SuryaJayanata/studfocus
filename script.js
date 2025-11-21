@@ -7,13 +7,11 @@ class StudyFocusApp {
             minutesToday: 0,
             totalSessions: 0,
             totalMinutes: 0,
-            history: [],
-            streak: 0,
-            lastActiveDate: null
+            history: []
         };
         this.quickNotes = '';
         this.currentTheme = 'light';
-        this.navbarPosition = 'top';
+        this.navbarPosition = 'top'; // 'top' or 'bottom'
         this.navbarVisible = true;
         this.currentPage = window.location.pathname.split('/').pop() || 'index.html';
         this.init();
@@ -26,7 +24,6 @@ class StudyFocusApp {
         this.applyTheme();
         this.applyNavbarSettings();
         this.setupPWA();
-        this.updateStreak();
         
         // Page-specific initialization
         if (this.currentPage === 'dashboard.html' || this.currentPage === 'index.html') {
@@ -52,37 +49,6 @@ class StudyFocusApp {
         }
     }
     
-    // Update streak based on user activity
-    updateStreak() {
-        const today = new Date().toDateString();
-        const lastActive = this.pomodoroStats.lastActiveDate;
-        
-        if (!lastActive) {
-            // First time user
-            this.pomodoroStats.streak = 1;
-            this.pomodoroStats.lastActiveDate = today;
-            this.savePomodoroStats();
-            return;
-        }
-        
-        const lastActiveDate = new Date(lastActive);
-        const todayDate = new Date(today);
-        const diffTime = todayDate - lastActiveDate;
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) {
-            // Consecutive day
-            this.pomodoroStats.streak++;
-        } else if (diffDays > 1) {
-            // Broken streak
-            this.pomodoroStats.streak = 1;
-        }
-        // If diffDays === 0, same day - don't change streak
-        
-        this.pomodoroStats.lastActiveDate = today;
-        this.savePomodoroStats();
-    }
-    
     // PWA Setup
     setupPWA() {
         // Register service worker
@@ -104,13 +70,13 @@ class StudyFocusApp {
         const installConfirm = document.getElementById('installConfirm');
         const installCancel = document.getElementById('installCancel');
         
-        if (installPrompt && installConfirm && installCancel) {
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Show install prompt
-                setTimeout(() => {
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install prompt
+            setTimeout(() => {
+                if (installPrompt && installConfirm && installCancel) {
                     installPrompt.classList.add('active');
                     
                     installConfirm.addEventListener('click', () => {
@@ -129,9 +95,9 @@ class StudyFocusApp {
                     installCancel.addEventListener('click', () => {
                         installPrompt.classList.remove('active');
                     });
-                }, 3000);
-            });
-        }
+                }
+            }, 3000);
+        });
     }
     
     // Navbar Controls
@@ -192,17 +158,34 @@ class StudyFocusApp {
     
     // Navbar Position and Visibility Controls
     setupNavbarControls() {
-        const toggleNavbarPosition = document.getElementById('toggleNavbarPosition');
-        const toggleNavbarVisibility = document.getElementById('toggleNavbarVisibility');
-        
-        if (toggleNavbarPosition) {
-            toggleNavbarPosition.addEventListener('click', () => {
+        // Create navbar controls if they don't exist
+        if (!document.getElementById('navbarControls')) {
+            const controls = document.createElement('div');
+            controls.id = 'navbarControls';
+            controls.className = 'navbar-controls';
+            controls.innerHTML = `
+                <button id="toggleNavbarPosition" class="navbar-control-btn" title="Pindah Posisi Navbar">
+                    <i class="fas fa-arrows-alt-v"></i>
+                </button>
+                <button id="toggleNavbarVisibility" class="navbar-control-btn" title="Sembunyikan/Tampilkan Navbar">
+                    <i class="fas fa-eye"></i>
+                </button>
+            `;
+            
+            // Add to navbar actions or create a new container
+            const navActions = document.querySelector('.nav-actions') || document.querySelector('.floating-nav-actions');
+            if (navActions) {
+                navActions.appendChild(controls);
+            } else {
+                document.body.appendChild(controls);
+            }
+            
+            // Add event listeners
+            document.getElementById('toggleNavbarPosition').addEventListener('click', () => {
                 this.toggleNavbarPosition();
             });
-        }
-        
-        if (toggleNavbarVisibility) {
-            toggleNavbarVisibility.addEventListener('click', () => {
+            
+            document.getElementById('toggleNavbarVisibility').addEventListener('click', () => {
                 this.toggleNavbarVisibility();
             });
         }
@@ -301,7 +284,6 @@ class StudyFocusApp {
         // Quick notes auto-save
         const quickNotes = document.getElementById('quickNotes');
         if (quickNotes) {
-            quickNotes.value = this.quickNotes;
             quickNotes.addEventListener('input', () => {
                 this.quickNotes = quickNotes.value;
                 this.saveQuickNotes();
@@ -312,12 +294,6 @@ class StudyFocusApp {
                     notesCounter.textContent = `${this.quickNotes.length} karakter`;
                 }
             });
-            
-            // Update character count on load
-            const notesCounter = document.querySelector('.notes-counter');
-            if (notesCounter) {
-                notesCounter.textContent = `${this.quickNotes.length} karakter`;
-            }
         }
         
         // Clear notes button
@@ -335,22 +311,6 @@ class StudyFocusApp {
                     }
                     
                     this.showNotification('Catatan berhasil dihapus', 'success');
-                }
-            });
-        }
-        
-        // Dashboard todo functionality
-        const addTodoBtn = document.getElementById('addTodo');
-        const todoInput = document.getElementById('todoInput');
-        
-        if (addTodoBtn && todoInput) {
-            addTodoBtn.addEventListener('click', () => {
-                this.addTodo();
-            });
-            
-            todoInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.addTodo();
                 }
             });
         }
@@ -442,15 +402,6 @@ class StudyFocusApp {
         const savedStats = localStorage.getItem('studyFocusStats');
         if (savedStats) {
             const stats = JSON.parse(savedStats);
-            
-            // Check if stats are from today, if not reset daily stats
-            const today = new Date().toDateString();
-            if (stats.lastUpdated !== today) {
-                stats.sessionsToday = 0;
-                stats.minutesToday = 0;
-                stats.lastUpdated = today;
-            }
-            
             this.pomodoroStats = { ...this.pomodoroStats, ...stats };
         }
         
@@ -458,6 +409,16 @@ class StudyFocusApp {
         const savedNotes = localStorage.getItem('studyFocusNotes');
         if (savedNotes) {
             this.quickNotes = savedNotes;
+            const notesTextarea = document.getElementById('quickNotes');
+            if (notesTextarea) {
+                notesTextarea.value = this.quickNotes;
+                
+                // Update character count
+                const notesCounter = document.querySelector('.notes-counter');
+                if (notesCounter) {
+                    notesCounter.textContent = `${this.quickNotes.length} karakter`;
+                }
+            }
         }
     }
     
@@ -466,8 +427,6 @@ class StudyFocusApp {
     }
     
     savePomodoroStats() {
-        // Update last updated date
-        this.pomodoroStats.lastUpdated = new Date().toDateString();
         localStorage.setItem('studyFocusStats', JSON.stringify(this.pomodoroStats));
     }
     
@@ -561,19 +520,6 @@ class StudyFocusApp {
         if (typeof PomodoroTimer !== 'undefined') {
             window.pomodoroTimer = new PomodoroTimer();
         }
-        
-        // Update pomodoro stats display
-        this.updatePomodoroStatsDisplay();
-    }
-    
-    updatePomodoroStatsDisplay() {
-        const todaySessions = document.getElementById('todayPomodoroSessions');
-        const todayMinutes = document.getElementById('todayPomodoroMinutes');
-        const currentStreak = document.getElementById('currentStreak');
-        
-        if (todaySessions) todaySessions.textContent = this.pomodoroStats.sessionsToday;
-        if (todayMinutes) todayMinutes.textContent = this.pomodoroStats.minutesToday;
-        if (currentStreak) currentStreak.textContent = this.pomodoroStats.streak;
     }
     
     initTodoPage() {
@@ -584,161 +530,23 @@ class StudyFocusApp {
     }
     
     initStatsPage() {
-        // Update stats with real data
-        this.updateStatsPage();
-        
         // Initialize charts if they exist
         if (typeof Chart !== 'undefined') {
             this.initCharts();
         }
     }
     
-    updateStatsPage() {
-        // Update main stats
-        const totalSessions = document.getElementById('totalSessions');
-        const totalMinutes = document.getElementById('totalMinutes');
-        const completedTasks = document.getElementById('completedTasks');
-        const activeStreak = document.getElementById('activeStreak');
-        
-        if (totalSessions) totalSessions.textContent = this.pomodoroStats.totalSessions;
-        if (totalMinutes) totalMinutes.textContent = this.pomodoroStats.totalMinutes;
-        
-        const completedTodos = this.todos.filter(todo => todo.completed).length;
-        if (completedTasks) completedTasks.textContent = completedTodos;
-        
-        if (activeStreak) activeStreak.textContent = this.pomodoroStats.streak;
-        
-        // Update history with real data
-        this.updateHistoryDisplay();
-        
-        // Update achievements with real data
-        this.updateAchievementsDisplay();
-    }
-    
-    updateHistoryDisplay() {
-        const historyList = document.querySelector('.history-list');
-        if (!historyList) return;
-        
-        // For now, we'll create sample history data based on current stats
-        // In a real app, you would store and retrieve actual historical data
-        const historyData = [
-            { date: 'Hari Ini', sessions: this.pomodoroStats.sessionsToday, minutes: this.pomodoroStats.minutesToday },
-            { date: 'Kemarin', sessions: Math.max(0, this.pomodoroStats.sessionsToday - 1), minutes: Math.max(0, this.pomodoroStats.minutesToday - 25) },
-            { date: '2 Hari Lalu', sessions: Math.max(0, this.pomodoroStats.sessionsToday - 2), minutes: Math.max(0, this.pomodoroStats.minutesToday - 50) },
-            { date: '3 Hari Lalu', sessions: Math.max(0, this.pomodoroStats.sessionsToday - 1), minutes: Math.max(0, this.pomodoroStats.minutesToday - 25) }
-        ];
-        
-        historyList.innerHTML = historyData.map(day => {
-            const progress = Math.min(100, (day.sessions / 5) * 100);
-            return `
-                <div class="history-item">
-                    <div class="history-date">${day.date}</div>
-                    <div class="history-stats">
-                        <span class="history-sessions">${day.sessions} sesi</span>
-                        <span class="history-minutes">${day.minutes} menit</span>
-                    </div>
-                    <div class="history-progress">
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${progress}%"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-    
-    updateAchievementsDisplay() {
-        const achievementsGrid = document.querySelector('.achievements-grid');
-        if (!achievementsGrid) return;
-        
-        const completedTodos = this.todos.filter(todo => todo.completed).length;
-        const totalMinutes = this.pomodoroStats.totalMinutes;
-        
-        const achievements = [
-            {
-                id: 'beginner',
-                title: 'Pemula Produktif',
-                description: 'Selesaikan 5 sesi Pomodoro',
-                icon: 'medal',
-                unlocked: this.pomodoroStats.totalSessions >= 5,
-                progress: Math.min(100, (this.pomodoroStats.totalSessions / 5) * 100)
-            },
-            {
-                id: 'streak3',
-                title: 'Streak 3 Hari',
-                description: 'Gunakan app selama 3 hari berturut-turut',
-                icon: 'fire',
-                unlocked: this.pomodoroStats.streak >= 3,
-                progress: Math.min(100, (this.pomodoroStats.streak / 3) * 100)
-            },
-            {
-                id: 'focusMaster',
-                title: 'Ahli Fokus',
-                description: 'Capai 500 menit fokus total',
-                icon: 'bolt',
-                unlocked: totalMinutes >= 500,
-                progress: Math.min(100, (totalMinutes / 500) * 100)
-            },
-            {
-                id: 'weekly',
-                title: 'Konsisten Mingguan',
-                description: 'Gunakan app setiap hari selama 7 hari',
-                icon: 'star',
-                unlocked: this.pomodoroStats.streak >= 7,
-                progress: Math.min(100, (this.pomodoroStats.streak / 7) * 100)
-            }
-        ];
-        
-        achievementsGrid.innerHTML = achievements.map(achievement => {
-            if (achievement.unlocked) {
-                return `
-                    <div class="achievement-item unlocked">
-                        <div class="achievement-icon">
-                            <i class="fas fa-${achievement.icon}"></i>
-                        </div>
-                        <div class="achievement-info">
-                            <h4>${achievement.title}</h4>
-                            <p>${achievement.description}</p>
-                        </div>
-                        <div class="achievement-badge">Diraih</div>
-                    </div>
-                `;
-            } else {
-                return `
-                    <div class="achievement-item">
-                        <div class="achievement-icon">
-                            <i class="fas fa-${achievement.icon}"></i>
-                        </div>
-                        <div class="achievement-info">
-                            <h4>${achievement.title}</h4>
-                            <p>${achievement.description}</p>
-                        </div>
-                        <div class="achievement-progress">
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${achievement.progress}%"></div>
-                            </div>
-                            <span>${Math.round(achievement.progress)}%</span>
-                        </div>
-                    </div>
-                `;
-            }
-        }).join('');
-    }
-    
     initCharts() {
-        // Activity Chart - using real data
+        // Activity Chart
         const activityCtx = document.getElementById('activityChart');
         if (activityCtx) {
-            // Generate weekly data based on user activity
-            const weeklyData = this.generateWeeklyData();
-            
             new Chart(activityCtx, {
                 type: 'bar',
                 data: {
                     labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
                     datasets: [{
                         label: 'Menit Fokus',
-                        data: weeklyData,
+                        data: [75, 100, 50, 125, 90, 60, 100],
                         backgroundColor: 'rgba(108, 99, 255, 0.7)',
                         borderColor: 'rgba(108, 99, 255, 1)',
                         borderWidth: 1
@@ -760,17 +568,15 @@ class StudyFocusApp {
             });
         }
         
-        // Distribution Chart - using real category data
+        // Distribution Chart
         const distributionCtx = document.getElementById('timeDistributionChart');
         if (distributionCtx) {
-            const categoryData = this.getCategoryDistribution();
-            
             new Chart(distributionCtx, {
                 type: 'doughnut',
                 data: {
-                    labels: categoryData.labels,
+                    labels: ['Matematika', 'Fisika', 'Kimia', 'Bahasa', 'Lainnya'],
                     datasets: [{
-                        data: categoryData.values,
+                        data: [35, 25, 20, 15, 5],
                         backgroundColor: [
                             '#6C63FF',
                             '#FF6584',
@@ -791,92 +597,7 @@ class StudyFocusApp {
                     }
                 }
             });
-            
-            // Update distribution legend
-            this.updateDistributionLegend(categoryData);
         }
-    }
-    
-    generateWeeklyData() {
-        // In a real app, you would retrieve this from stored historical data
-        // For now, we'll generate data based on current stats
-        const baseMinutes = this.pomodoroStats.minutesToday;
-        return [
-            Math.max(0, baseMinutes - 50),
-            Math.max(0, baseMinutes - 25),
-            Math.max(0, baseMinutes - 75),
-            baseMinutes,
-            Math.max(0, baseMinutes - 10),
-            Math.max(0, baseMinutes - 40),
-            Math.max(0, baseMinutes - 15)
-        ];
-    }
-    
-    getCategoryDistribution() {
-        // Extract categories from todos
-        const categories = {};
-        this.todos.forEach(todo => {
-            // Simple category extraction from todo text
-            const text = todo.text.toLowerCase();
-            if (text.includes('matematika') || text.includes('math')) {
-                categories.matematika = (categories.matematika || 0) + 1;
-            } else if (text.includes('fisika') || text.includes('physics')) {
-                categories.fisika = (categories.fisika || 0) + 1;
-            } else if (text.includes('kimia') || text.includes('chemistry')) {
-                categories.kimia = (categories.kimia || 0) + 1;
-            } else if (text.includes('bahasa') || text.includes('language')) {
-                categories.bahasa = (categories.bahasa || 0) + 1;
-            } else {
-                categories.lainnya = (categories.lainnya || 0) + 1;
-            }
-        });
-        
-        // Default distribution if no categories found
-        if (Object.keys(categories).length === 0) {
-            return {
-                labels: ['Matematika', 'Fisika', 'Kimia', 'Bahasa', 'Lainnya'],
-                values: [35, 25, 20, 15, 5]
-            };
-        }
-        
-        // Calculate percentages
-        const total = Object.values(categories).reduce((sum, count) => sum + count, 0);
-        const labels = [];
-        const values = [];
-        
-        // Map category keys to display names
-        const categoryMap = {
-            'matematika': 'Matematika',
-            'fisika': 'Fisika',
-            'kimia': 'Kimia',
-            'bahasa': 'Bahasa',
-            'lainnya': 'Lainnya'
-        };
-        
-        Object.keys(categories).forEach(key => {
-            labels.push(categoryMap[key] || key);
-            values.push(Math.round((categories[key] / total) * 100));
-        });
-        
-        return { labels, values };
-    }
-    
-    updateDistributionLegend(categoryData) {
-        const legendContainer = document.querySelector('.distribution-legend');
-        if (!legendContainer) return;
-        
-        const colors = ['#6C63FF', '#FF6584', '#36D1DC', '#4CC9F0', '#F8961E'];
-        
-        legendContainer.innerHTML = categoryData.labels.map((label, index) => {
-            const percent = categoryData.values[index];
-            return `
-                <div class="legend-item">
-                    <span class="legend-color" style="background-color: ${colors[index % colors.length]}"></span>
-                    <span>${label}</span>
-                    <span class="legend-percent">${percent}%</span>
-                </div>
-            `;
-        }).join('');
     }
     
     // Dashboard functionality
@@ -945,44 +666,6 @@ class StudyFocusApp {
             progressFill.style.width = `${progress}%`;
             progressText.textContent = `${Math.round(progress)}%`;
         }
-        
-        // Update achievements in dashboard
-        this.updateDashboardAchievements();
-    }
-    
-    updateDashboardAchievements() {
-        const achievementsGrid = document.querySelector('.achievements-grid');
-        if (!achievementsGrid) return;
-        
-        const achievements = [
-            {
-                icon: 'fire',
-                title: 'Streak Belajar',
-                value: `${this.pomodoroStats.streak} hari berturut-turut`
-            },
-            {
-                icon: 'medal',
-                title: 'Fokus Terjaga',
-                value: `${this.pomodoroStats.sessionsToday} sesi Pomodoro`
-            },
-            {
-                icon: 'check-double',
-                title: 'Tugas Terselesaikan',
-                value: `${this.todos.filter(t => t.completed).length} dari ${this.todos.length} tugas`
-            }
-        ];
-        
-        achievementsGrid.innerHTML = achievements.map(achievement => `
-            <div class="achievement-item">
-                <div class="achievement-icon">
-                    <i class="fas fa-${achievement.icon}"></i>
-                </div>
-                <div class="achievement-info">
-                    <h3>${achievement.title}</h3>
-                    <p>${achievement.value}</p>
-                </div>
-            </div>
-        `).join('');
     }
     
     updateTimerDisplay() {
@@ -1013,8 +696,7 @@ class StudyFocusApp {
             id: Date.now(),
             text: text,
             completed: false,
-            createdAt: new Date().toISOString(),
-            category: this.detectCategory(text)
+            createdAt: new Date().toISOString()
         };
         
         this.todos.unshift(todo);
@@ -1026,21 +708,6 @@ class StudyFocusApp {
         this.showNotification('Tugas berhasil ditambahkan!', 'success');
     }
     
-    detectCategory(text) {
-        const lowerText = text.toLowerCase();
-        if (lowerText.includes('matematika') || lowerText.includes('math') || lowerText.includes('kalkulus')) {
-            return 'matematika';
-        } else if (lowerText.includes('fisika') || lowerText.includes('physics')) {
-            return 'fisika';
-        } else if (lowerText.includes('kimia') || lowerText.includes('chemistry')) {
-            return 'kimia';
-        } else if (lowerText.includes('bahasa') || lowerText.includes('language') || lowerText.includes('indonesia') || lowerText.includes('inggris')) {
-            return 'bahasa';
-        } else {
-            return 'lainnya';
-        }
-    }
-    
     toggleTodo(id) {
         const todo = this.todos.find(t => t.id === id);
         if (todo) {
@@ -1048,10 +715,6 @@ class StudyFocusApp {
             this.saveTodos();
             this.renderTodos();
             this.updateStats();
-            
-            if (todo.completed) {
-                this.showNotification('Tugas selesai!', 'success');
-            }
         }
     }
     
@@ -1076,7 +739,6 @@ class StudyFocusApp {
                     }
                     
                     todo.text = newText;
-                    todo.category = this.detectCategory(newText);
                     this.saveTodos();
                     this.renderTodos();
                     editModal.classList.remove('active');
@@ -1136,10 +798,8 @@ class PomodoroTimer {
         this.mode = 'focus'; // focus, shortBreak, longBreak
         this.interval = null;
         this.completedSessions = 0;
-        this.totalSessions = window.studyFocusApp ? window.studyFocusApp.pomodoroStats.totalSessions : 0;
-        this.totalMinutes = window.studyFocusApp ? window.studyFocusApp.pomodoroStats.totalMinutes : 0;
-        this.sessionsToday = window.studyFocusApp ? window.studyFocusApp.pomodoroStats.sessionsToday : 0;
-        this.minutesToday = window.studyFocusApp ? window.studyFocusApp.pomodoroStats.minutesToday : 0;
+        this.totalSessions = 0;
+        this.totalMinutes = 0;
         
         this.modeDurations = {
             focus: 25,
@@ -1153,8 +813,7 @@ class PomodoroTimer {
     init() {
         this.setupEventListeners();
         this.updateDisplay();
-        this.updateButtonStates();
-        this.updateSessionCounter();
+        this.loadStats();
     }
     
     setupEventListeners() {
@@ -1182,37 +841,37 @@ class PomodoroTimer {
                 this.startWithTask();
             });
         }
-        
-        // Task select change
-        const taskSelect = document.getElementById('taskSelect');
-        if (taskSelect) {
-            taskSelect.addEventListener('change', (e) => {
-                this.updateCurrentTaskDisplay(e.target.value);
-            });
-        }
     }
     
     start() {
         if (this.isRunning) return;
         
         this.isRunning = true;
+        const startBtn = document.getElementById('startTimer');
+        const pauseBtn = document.getElementById('pauseTimer');
+        
+        if (startBtn) startBtn.disabled = true;
+        if (pauseBtn) pauseBtn.disabled = false;
         
         this.interval = setInterval(() => {
             this.tick();
         }, 1000);
         
         this.updateButtonStates();
-        this.showNotification('Timer dimulai! Fokus pada tugas Anda.', 'info');
     }
     
     pause() {
         if (!this.isRunning) return;
         
         this.isRunning = false;
-        clearInterval(this.interval);
+        const startBtn = document.getElementById('startTimer');
+        const pauseBtn = document.getElementById('pauseTimer');
         
+        if (startBtn) startBtn.disabled = false;
+        if (pauseBtn) pauseBtn.disabled = true;
+        
+        clearInterval(this.interval);
         this.updateButtonStates();
-        this.showNotification('Timer dijeda.', 'info');
     }
     
     reset() {
@@ -1221,7 +880,6 @@ class PomodoroTimer {
         this.seconds = 0;
         this.updateDisplay();
         this.updateProgressRing();
-        this.updateButtonStates();
     }
     
     tick() {
@@ -1243,23 +901,25 @@ class PomodoroTimer {
     completeSession() {
         this.pause();
         
-        // Update stats based on mode
+        // Update stats
         if (this.mode === 'focus') {
             this.completedSessions++;
             this.totalSessions++;
-            this.sessionsToday++;
             this.totalMinutes += this.modeDurations.focus;
-            this.minutesToday += this.modeDurations.focus;
+            
+            // Update UI
+            const todaySessions = document.getElementById('todayPomodoroSessions');
+            const todayMinutes = document.getElementById('todayPomodoroMinutes');
+            
+            if (todaySessions) todaySessions.textContent = this.totalSessions;
+            if (todayMinutes) todayMinutes.textContent = this.totalMinutes;
             
             // Update global stats
             if (window.studyFocusApp) {
-                window.studyFocusApp.pomodoroStats.sessionsToday = this.sessionsToday;
-                window.studyFocusApp.pomodoroStats.minutesToday = this.minutesToday;
-                window.studyFocusApp.pomodoroStats.totalSessions = this.totalSessions;
-                window.studyFocusApp.pomodoroStats.totalMinutes = this.totalMinutes;
+                window.studyFocusApp.pomodoroStats.sessionsToday = this.totalSessions;
+                window.studyFocusApp.pomodoroStats.minutesToday = this.totalMinutes;
                 window.studyFocusApp.savePomodoroStats();
                 window.studyFocusApp.updateStats();
-                window.studyFocusApp.updatePomodoroStatsDisplay();
             }
             
             // Show notification
@@ -1277,6 +937,7 @@ class PomodoroTimer {
             this.showNotification('Istirahat selesai! Siap untuk fokus kembali.', 'info');
         }
         
+        this.saveStats();
         this.updateSessionCounter();
     }
     
@@ -1345,11 +1006,12 @@ class PomodoroTimer {
         const startBtn = document.getElementById('startTimer');
         const pauseBtn = document.getElementById('pauseTimer');
         
-        if (startBtn) {
-            startBtn.disabled = this.isRunning;
-        }
-        if (pauseBtn) {
-            pauseBtn.disabled = !this.isRunning;
+        if (this.isRunning) {
+            if (startBtn) startBtn.disabled = true;
+            if (pauseBtn) pauseBtn.disabled = false;
+        } else {
+            if (startBtn) startBtn.disabled = false;
+            if (pauseBtn) pauseBtn.disabled = true;
         }
     }
     
@@ -1364,52 +1026,99 @@ class PomodoroTimer {
             return;
         }
         
-        this.updateCurrentTaskDisplay(selectedTask);
-        this.showNotification(`Memulai sesi Pomodoro untuk: ${taskSelect.options[taskSelect.selectedIndex].text}`, 'success');
-        this.start();
-    }
-    
-    updateCurrentTaskDisplay(taskValue) {
+        // Update current task display
         const taskDisplay = document.getElementById('currentTaskDisplay');
-        const taskSelect = document.getElementById('taskSelect');
-        
-        if (!taskDisplay || !taskSelect) return;
-        
-        if (!taskValue) {
-            taskDisplay.innerHTML = `
-                <div class="no-task-message">
-                    <i class="fas fa-info-circle"></i>
-                    <p>Belum ada tugas yang dipilih. Pilih tugas untuk melacak progress belajar Anda.</p>
-                </div>
-            `;
-            return;
-        }
-        
         const taskText = taskSelect.options[taskSelect.selectedIndex].text;
         
-        taskDisplay.innerHTML = `
-            <div class="active-task">
-                <div class="task-header">
-                    <i class="fas fa-tasks"></i>
-                    <h4>Tugas Aktif</h4>
-                </div>
-                <p class="task-name">${taskText}</p>
-                <div class="task-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: 0%"></div>
+        if (taskDisplay) {
+            taskDisplay.innerHTML = `
+                <div class="active-task">
+                    <div class="task-header">
+                        <i class="fas fa-tasks"></i>
+                        <h4>Tugas Aktif</h4>
                     </div>
-                    <span class="progress-text">0%</span>
+                    <p class="task-name">${taskText}</p>
+                    <div class="task-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <span class="progress-text">0%</span>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
+        
+        this.showNotification(`Memulai sesi Pomodoro untuk: ${taskText}`, 'success');
+        this.start();
     }
     
     showNotification(message, type = 'info') {
         if (window.studyFocusApp) {
             window.studyFocusApp.showNotification(message, type);
-        } else {
-            // Fallback notification
-            console.log(`${type}: ${message}`);
+        }
+    }
+    
+    loadStats() {
+        const savedStats = localStorage.getItem('pomodoroStats');
+        if (savedStats) {
+            const stats = JSON.parse(savedStats);
+            this.totalSessions = stats.totalSessions || 0;
+            this.totalMinutes = stats.totalMinutes || 0;
+            
+            // Update UI
+            const todaySessions = document.getElementById('todayPomodoroSessions');
+            const todayMinutes = document.getElementById('todayPomodoroMinutes');
+            
+            if (todaySessions) todaySessions.textContent = this.totalSessions;
+            if (todayMinutes) todayMinutes.textContent = this.totalMinutes;
+            
+            // Calculate streak (simplified)
+            const lastUsed = localStorage.getItem('pomodoroLastUsed');
+            const today = new Date().toDateString();
+            
+            if (lastUsed === today) {
+                const currentStreak = parseInt(localStorage.getItem('pomodoroStreak') || '0');
+                const streakElement = document.getElementById('currentStreak');
+                if (streakElement) {
+                    streakElement.textContent = currentStreak;
+                }
+            }
+        }
+    }
+    
+    saveStats() {
+        const stats = {
+            totalSessions: this.totalSessions,
+            totalMinutes: this.totalMinutes
+        };
+        
+        localStorage.setItem('pomodoroStats', JSON.stringify(stats));
+        
+        // Update streak
+        const today = new Date().toDateString();
+        const lastUsed = localStorage.getItem('pomodoroLastUsed');
+        
+        if (lastUsed !== today) {
+            let streak = parseInt(localStorage.getItem('pomodoroStreak') || '0');
+            
+            // Check if yesterday was also used
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toDateString();
+            
+            if (lastUsed === yesterdayStr) {
+                streak++;
+            } else {
+                streak = 1;
+            }
+            
+            localStorage.setItem('pomodoroStreak', streak.toString());
+            localStorage.setItem('pomodoroLastUsed', today);
+            
+            const streakElement = document.getElementById('currentStreak');
+            if (streakElement) {
+                streakElement.textContent = streak;
+            }
         }
     }
 }
@@ -1417,13 +1126,14 @@ class PomodoroTimer {
 // Enhanced To-Do List Functionality
 class EnhancedTodoList {
     constructor() {
-        this.todos = window.studyFocusApp ? window.studyFocusApp.todos : [];
+        this.todos = [];
         this.currentFilter = 'all';
         this.editingId = null;
         this.init();
     }
     
     init() {
+        this.loadTodos();
         this.setupEventListeners();
         this.renderTodos();
         this.updateStats();
@@ -1485,8 +1195,7 @@ class EnhancedTodoList {
             text: text,
             completed: false,
             priority: false,
-            createdAt: new Date().toISOString(),
-            category: this.detectCategory(text)
+            createdAt: new Date().toISOString()
         };
         
         this.todos.push(todo);
@@ -1496,21 +1205,6 @@ class EnhancedTodoList {
         this.renderTodos();
         this.updateStats();
         this.showNotification('Tugas berhasil ditambahkan!', 'success');
-    }
-    
-    detectCategory(text) {
-        const lowerText = text.toLowerCase();
-        if (lowerText.includes('matematika') || lowerText.includes('math') || lowerText.includes('kalkulus')) {
-            return 'matematika';
-        } else if (lowerText.includes('fisika') || lowerText.includes('physics')) {
-            return 'fisika';
-        } else if (lowerText.includes('kimia') || lowerText.includes('chemistry')) {
-            return 'kimia';
-        } else if (lowerText.includes('bahasa') || lowerText.includes('language') || lowerText.includes('indonesia') || lowerText.includes('inggris')) {
-            return 'bahasa';
-        } else {
-            return 'lainnya';
-        }
     }
     
     setFilter(filter) {
@@ -1534,10 +1228,6 @@ class EnhancedTodoList {
             this.saveTodos();
             this.renderTodos();
             this.updateStats();
-            
-            if (window.studyFocusApp) {
-                window.studyFocusApp.updateStats();
-            }
         }
     }
     
@@ -1578,7 +1268,6 @@ class EnhancedTodoList {
         const todo = this.todos.find(t => t.id === this.editingId);
         if (todo) {
             todo.text = text;
-            todo.category = this.detectCategory(text);
             this.saveTodos();
             this.renderTodos();
             this.closeEditModal();
@@ -1698,41 +1387,124 @@ class EnhancedTodoList {
         if (completedTasksElement) completedTasksElement.textContent = completedTasks;
         if (progressFill) progressFill.style.width = `${progress}%`;
         if (progressText) progressText.textContent = `${progress}%`;
-        
-        // Update global app if exists
-        if (window.studyFocusApp) {
-            window.studyFocusApp.updateStats();
-        }
     }
     
     saveTodos() {
+        localStorage.setItem('studyFocusTodos', JSON.stringify(this.todos));
+        
+        // Update global app if exists
         if (window.studyFocusApp) {
             window.studyFocusApp.todos = this.todos;
             window.studyFocusApp.saveTodos();
-        } else {
-            localStorage.setItem('studyFocusTodos', JSON.stringify(this.todos));
+        }
+    }
+    
+    loadTodos() {
+        const savedTodos = localStorage.getItem('studyFocusTodos');
+        
+        if (savedTodos) {
+            this.todos = JSON.parse(savedTodos);
         }
     }
     
     showNotification(message, type = 'success') {
         if (window.studyFocusApp) {
             window.studyFocusApp.showNotification(message, type);
-        } else {
-            // Fallback notification
-            console.log(`${type}: ${message}`);
         }
     }
 }
 
 // Initialize apps when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize Pomodoro Timer if on pomodoro page or dashboard
-    if ((document.querySelector('.pomodoro-page') || document.querySelector('.dashboard-page')) && typeof PomodoroTimer !== 'undefined') {
+    // Initialize Pomodoro Timer if on pomodoro page
+    if (document.querySelector('.pomodoro-page') && typeof PomodoroTimer !== 'undefined') {
         window.pomodoroTimer = new PomodoroTimer();
     }
     
     // Initialize Todo App if on todo page
     if (document.querySelector('.todo-page') && typeof EnhancedTodoList !== 'undefined') {
         window.todoApp = new EnhancedTodoList();
+    }
+});
+
+// Navbar Controls Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const navbar = document.querySelector('.navbar, .floating-navbar');
+    const navbarHideBtn = document.getElementById('navbarHideBtn');
+    const navbarShowBtn = document.getElementById('navbarShowBtn');
+    const navbarPositionBtn = document.getElementById('navbarPositionBtn');
+    const mainContent = document.querySelector('main');
+    
+    // Check if navbar controls exist on the page
+    if (navbar && navbarHideBtn && navbarShowBtn && navbarPositionBtn) {
+        // Load navbar state from localStorage
+        const navbarState = localStorage.getItem('navbarState');
+        const navbarPosition = localStorage.getItem('navbarPosition') || 'bottom';
+        
+        // Apply saved navbar position
+        applyNavbarPosition(navbarPosition);
+        
+        // Apply saved navbar visibility state
+        if (navbarState === 'hidden') {
+            hideNavbar();
+        }
+        
+        // Navbar hide functionality
+        navbarHideBtn.addEventListener('click', function() {
+            hideNavbar();
+            localStorage.setItem('navbarState', 'hidden');
+        });
+        
+        // Navbar show functionality
+        navbarShowBtn.addEventListener('click', function() {
+            showNavbar();
+            localStorage.setItem('navbarState', 'visible');
+        });
+        
+        // Navbar position toggle functionality
+        navbarPositionBtn.addEventListener('click', function() {
+            toggleNavbarPosition();
+        });
+        
+        function hideNavbar() {
+            navbar.classList.add('navbar-hidden');
+            navbarShowBtn.style.display = 'flex';
+            adjustMainPadding();
+        }
+        
+        function showNavbar() {
+            navbar.classList.remove('navbar-hidden');
+            navbarShowBtn.style.display = 'none';
+            adjustMainPadding();
+        }
+        
+        function toggleNavbarPosition() {
+            const currentPosition = navbar.classList.contains('navbar-top') ? 'top' : 'bottom';
+            const newPosition = currentPosition === 'top' ? 'bottom' : 'top';
+            
+            applyNavbarPosition(newPosition);
+            localStorage.setItem('navbarPosition', newPosition);
+            adjustMainPadding();
+        }
+        
+        function applyNavbarPosition(position) {
+            navbar.classList.remove('navbar-top', 'navbar-bottom');
+            navbar.classList.add(`navbar-${position}`);
+            
+            navbarShowBtn.classList.remove('top', 'bottom');
+            navbarShowBtn.classList.add(position);
+            
+            // Update position button icon
+            const icon = navbarPositionBtn.querySelector('i');
+            icon.className = position === 'top' ? 'fas fa-arrow-down' : 'fas fa-arrow-up';
+        }
+        
+        function adjustMainPadding() {
+            // This function will be called when navbar state changes
+            // The CSS will handle the padding adjustments
+        }
+        
+        // Initialize navbar show button visibility
+        navbarShowBtn.style.display = navbar.classList.contains('navbar-hidden') ? 'flex' : 'none';
     }
 });
